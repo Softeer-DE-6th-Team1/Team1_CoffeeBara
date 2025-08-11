@@ -80,19 +80,19 @@ Softeer bootcamp 6기 DE 1팀 개발 레포지토리입니다.
 <div align="center">
 <table>
 <th>팀원</th>
-    <th> 노하연 <a href="https://github.com/nohhha"><br/><img src=""/><a></th>
-	  <th> 박도현 <a href="https://github.com/ManRaccoon"><br/><img src=""/></a></th>
-    <th> 유혜원 <a href="https://github.com/mariahwy"><br/><img src=""/></a></th>
+    <th><a href="https://github.com/nohhha">노하연</a></th>
+	<th><a href="https://github.com/ManRaccoon">박도현</a></th>
+    <th><a href="https://github.com/mariahwy">유혜원</a></th>
     <tr>
-    <td> 팀원 소개 </td>
+    <td>  </td>
     	<td>
-        <img width="200" alt="노하연" src="" />
+        <img width="160" height="160" alt="노하연" src="https://github.com/user-attachments/assets/5882e407-2c85-4d22-9e36-16eb89b940fa" />
       </td>
     	<td>
-        <img width="200" alt="박도현" src="" />
+        <img width="160" height="160" alt="박도현" src="https://github.com/user-attachments/assets/d92155e2-7976-4cf0-b0c9-3e833aa94b9d" />
      </td>
       <td>
-        <img width="200" alt="유혜원" src="" />
+        <img width="160" height="160" alt="유혜원" src="https://github.com/user-attachments/assets/d07c2440-5249-4ada-bb52-0bed83408455" />
       </td>
     </tr>
     <tr>
