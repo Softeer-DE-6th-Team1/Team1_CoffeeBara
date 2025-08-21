@@ -5,6 +5,11 @@ __pycache__/
 # 테스트 코드
 test_*.py
 *_test.py
+test_*.ipynb
 
 # json 파일 (민감 정보, 설정 등)
 *.json
+*.csv
+*.log
+*.env
+.DS_store
