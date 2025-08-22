@@ -1,0 +1,16 @@
+# 캐시파일
+__pycache__/
+*pyc
+
+# cookies
+
+*/cookies
+
+# 가상환경
+/venv
+
+# 이미지
+*.png
+
+# 시각화
+*.ipynb
