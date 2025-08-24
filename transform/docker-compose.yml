@@ -1,0 +1,89 @@
+services:
+  spark-master:
+    # image : ec2-spark:latest # team
+    image : ec2-spark-test:latest # local
+    container_name: spark-master
+    user: softeer
+    environment:
+      - SPARK_ROLE=master
+      # - AWS_PROFILE=softeer # local
+      - AWS_PROFILE=mariahwy # local
+    volumes: 
+      - ./conf:/home/softeer/conf
+      - ./jobs:/home/softeer/jobs
+      - ./spark-events:/home/softeer/spark-events
+      - ~/.aws:/home/softeer/.aws:ro # local
+    ports:
+      - "7077:7077" # spark master RPC
+      - "8080:8080" # spark master web ui
+    networks:
+      - spark-net
+    command: ["/entrypoints/entrypoint-master.sh"]
+  
+  spark-worker1:
+    # image : ec2-spark:latest # team
+    image : ec2-spark-test:latest # local
+    container_name: spark-worker1
+    user: softeer
+    environment:
+      - SPARK_ROLE=worker
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_WEBUI_PORT=8081
+      # - AWS_PROFILE=softeer # local
+      - AWS_PROFILE=mariahwy # local
+    volumes:
+      - ./conf:/home/softeer/conf
+      - ./jobs:/home/softeer/jobs
+      - ./spark-events:/home/softeer/spark-events
+      - ~/.aws:/home/softeer/.aws:ro # local
+    ports:
+      - "8081:8081" # worker web ui
+    networks:
+      - spark-net
+    command: ["/entrypoints/entrypoint-worker.sh"]
+
+  spark-worker2:
+    # image : ec2-spark:latest # team
+    image : ec2-spark-test:latest # local
+    container_name: spark-worker2
+    user: softeer
+    environment:
+      - SPARK_ROLE=worker
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_WEBUI_PORT=8082
+      # - AWS_PROFILE=softeer # local
+      - AWS_PROFILE=mariahwy # local
+    volumes:
+      - ./conf:/home/softeer/conf
+      - ./jobs:/home/softeer/jobs
+      - ./spark-events:/home/softeer/spark-events
+      - ~/.aws:/home/softeer/.aws:ro # local
+    ports:
+      - "8082:8082" # worker web ui
+    networks:
+      - spark-net
+    command: ["/entrypoints/entrypoint-worker.sh"]
+    
+  spark-history:
+    # image: ec2-spark:latest # team
+    image : ec2-spark-test:latest # local
+    container_name: spark-history
+    user: softeer
+    environment:
+      - ./conf:/home/softeer/conf
+      - SPARK_ROLE=history
+      - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/home/softeer/spark-events
+      # - AWS_PROFILE=softeer # local
+      - AWS_PROFILE=mariahwy # local
+    volumes:
+      - ./spark-events:/home/softeer/spark-events
+      - ~/.aws:/home/softeer/.aws:ro # local
+    ports:
+      - "18080:18080"
+    networks:
+      - spark-net
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.history.HistoryServer"]
+
+networks:
+  spark-net:
+    driver: bridge
