@@ -16,7 +16,7 @@ PASSWORD = os.getenv('X_PASSWORD', '')
 
 LEGACY_KEYWORD = os.getenv('KEYWORD', '')
 S3_BUCKET = os.getenv('S3_BUCKET', 'softeer-de-6th-team1')
-S3_PREFIX = os.getenv('S3_KEY_PREFIX', 'x-data')
+S3_PREFIX = os.getenv('S3_KEY_PREFIX', 'raw-data')
 COOKIES_KEY = os.getenv("COOKIES_KEY", "configs/x_cookies.json")
 KEYWORDS_KEY = os.getenv("KEYWORDS_KEY", "configs/keywords.txt") 
 WINDOW_MINUTES = int(os.getenv("WINDOW_MINUTES", "10"))
@@ -105,7 +105,7 @@ def _save_batch_windowed(path: str, batch, collected_time_iso: str,
                 "collected_time": collected_time_iso,
                 "channel": CHANNEL,
                 "query": keyword,
-                "text": text,
+                "text": f"\"{text}\"",
             })
             saved += 1
 
@@ -240,7 +240,7 @@ async def _collect_for_keyword(client: Client, keyword: str, collected_iso: str,
     return result
 
 
-async def run(context=None):
+async def run(event, context=None):
     client = Client(
     'en-US',
     timeout=httpx.Timeout(connect=15, read=45, write=30, pool=30)
@@ -325,10 +325,12 @@ async def run(context=None):
         results.append(res)
         await asyncio.sleep(2)  # rate limit 완화
 
+    prefix = event.get("prefix", S3_PREFIX)
+
     s3_key = ""
     if os.path.exists(local_csv):
         try:
-            key = f"{S3_PREFIX}/{ts_for_filename}.csv"
+            key = f"{prefix}/x-data.csv"
             _s3_upload(local_csv, key)
             s3_key = f"s3://{S3_BUCKET}/{key}"
         finally:
@@ -362,4 +364,4 @@ def lambda_handler(event, context):
     AWS Lambda entrypoint.
     키워드별로 '최근 WINDOW_MINUTES분' 트윗만 수집하여 업로드합니다.
     """
-    return asyncio.run(run(context))
+    return asyncio.run(run(event, context))
