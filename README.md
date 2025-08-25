@@ -38,6 +38,10 @@ Softeer bootcamp 6기 DE 1팀 개발 레포지토리입니다.
 ### 4. Alert
 - Spark 분석 결과, 리스크 점수가 임계치를 초과한 데이터가 Alert DynamoDB에 적재되면, 이벤트를 감지한 Lambda 함수가 즉시 Slack 채널으로 알림을 보냅니다. 이를 통해 담당자는 SNS 상에서 확산될 위험성이 있는 특정 리스크를 집중적으로 모니터링 할 수 있습니다.
 
+### 5. Dashboard
+SNS 담당자는 알림에 보내진 dashboard 링크를 통해 해당 리스크에 대한 시간대별 지표를 시각적으로 확인할 수 있습니다.
+
+
 ## 아키텍처 시각화
 ![프로젝트 아키텍처](./images/softeer-6th-de-team1-architecture.png)
 
@@ -95,7 +99,23 @@ Softeer bootcamp 6기 DE 1팀 개발 레포지토리입니다.
 ---
 
 ## 🛠️ 기술 스택
-- 
+<div align="left">
+  <!-- Cloud & Infrastructure -->
+  <img src="https://img.shields.io/badge/AWS%20EC2-FF9900?style=for-the-badge&logo=amazonec2&logoColor=white"/>
+  <img src="https://img.shields.io/badge/AWS%20Lambda-FF9900?style=for-the-badge&logo=awslambda&logoColor=white"/>
+  <img src="https://img.shields.io/badge/AWS%20DynamoDB-4053D6?style=for-the-badge&logo=amazondynamodb&logoColor=white"/>
+  <img src="https://img.shields.io/badge/AWS%20S3-569A31?style=for-the-badge&logo=amazons3&logoColor=white"/>
+  <img src="https://img.shields.io/badge/AWS%20RDS%20(Postgres)-527FFF?style=for-the-badge&logo=amazonrds&logoColor=white"/>
+  <img src="https://img.shields.io/badge/AWS%20EventBridge-FF4F8B?style=for-the-badge&logo=amazoneventbridge&logoColor=white"/>
+  <!-- Data & Processing -->
+  <img src="https://img.shields.io/badge/Apache%20Spark-E25A1C?style=for-the-badge&logo=apachespark&logoColor=white"/>
+  <!-- DevOps & Tools -->
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white"/>
+  <!-- Application & Frontend -->
+  <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white"/>
+  <!-- Language -->
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
+</div>
 
 ## 🗂️ 폴더구조
 ```md
