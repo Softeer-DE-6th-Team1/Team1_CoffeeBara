@@ -36,9 +36,6 @@ spark-events/
 # 가상환경
 /venv
 
-# 이미지
-*.png
-
 <<<<<<< HEAD
 # 시각화
 *.ipynb
