@@ -1,17 +1,45 @@
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+# 캐시 파일
+__pycache__/
+*.pyc
+
+# 테스트 코드
+test_*.py
+*_test.py
+
+# json 파일 (민감 정보, 설정 등)
+*.json
+*.csv
+*.log
+*.env
+.DS_store
+=======
+>>>>>>> develop
 # 캐시파일
 __pycache__/
 *pyc
 
 # cookies
+<<<<<<< HEAD
 
 */cookies
 
+=======
+*/cookies
+
+# local logs
+spark-events/
+
+>>>>>>> develop
 # 가상환경
 /venv
 
 # 이미지
 *.png
 
+<<<<<<< HEAD
 # 시각화
 *.ipynb
 
@@ -25,3 +53,18 @@ data/
 
 # 로그 제거
 spark-events/
+=======
+# data
+data
+*csv
+
+# 시각화
+*.ipynb
+<<<<<<< HEAD
+>>>>>>> 56cbd60 (chore: .gitignore 파일 추가)
+=======
+
+.DS_STORE
+*.zip
+>>>>>>> 1e0be39 (chore: .gitignore 수정)
+>>>>>>> develop
