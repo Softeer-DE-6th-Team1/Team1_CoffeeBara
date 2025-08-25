@@ -3,7 +3,7 @@ from pyspark.sql.types import TimestampType
 from pyspark.ml.feature import StopWordsRemover, RegexTokenizer
 from pyspark.sql.functions import (
     col, expr, explode, array_intersect, array,
-    lit, size, lower, trim, broadcast,
+    lit, size, lower, trim, broadcast, regexp_replace,
 )
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -11,6 +11,32 @@ import boto3
 import os
 import sys
 import logging
+
+
+def preprocess_text(df, input_col="text", output_col="clean_text"):
+    """
+    텍스트 컬럼을 전처리:
+      - 줄바꿈 제거
+      - 영어 알파벳과 숫자만 남기고 나머지 문자(한글, 아랍어, 이모지 등) 제거
+      - 다중 공백 → 단일 공백
+    """
+    df_clean = (
+        df.withColumn(
+            output_col,
+            regexp_replace(col(input_col), r"[\r\n]+", " ")  # 줄바꿈 → 공백
+        )
+        .withColumn(
+            output_col,
+            regexp_replace(col(output_col), r"[^A-Za-z0-9\s]", " ")  # 영어/숫자 외 제거
+        )
+        .withColumn(
+            output_col,
+            regexp_replace(col(output_col), r"\s+", " ")  # 다중 공백 → 단일 공백
+        )
+        .withColumn(output_col, trim(col(output_col)))  # 앞뒤 공백 제거
+    )
+    return df_clean
+
 
 def text_to_words(spark, bucket_name:str, file_path:str):
     """
@@ -27,14 +53,18 @@ def text_to_words(spark, bucket_name:str, file_path:str):
         quote='"',        # 따옴표 안의 콤마는 무시
         escape='"'        # 따옴표 이스케이프 처리
     )
+
+    # 이모지, 줄바꿈 전처리
+    clean_df = preprocess_text(raw_df, input_col="text", output_col="clean_text")
+    
     # 문장을 단어 단위로 분리
     tokenizer = RegexTokenizer(
-        inputCol="text",
+        inputCol="clean_text",
         outputCol="words",
         pattern="\\W",   # 단어 아닌 것(공백, 구두점 등) 기준 split
         minTokenLength=2 # 최소 글자수
     )
-    df_words = tokenizer.transform(raw_df)
+    df_words = tokenizer.transform(clean_df)
 
     # 불용어 제거
     remover = StopWordsRemover(
