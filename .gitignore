@@ -20,3 +20,8 @@ data/
 
 # 배포용 zip 이미지
 *.zip
+
+.DS_Store
+
+# 로그 제거
+spark-events/
