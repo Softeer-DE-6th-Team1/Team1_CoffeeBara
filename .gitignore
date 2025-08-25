@@ -1,4 +1,6 @@
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 # 캐시 파일
 __pycache__/
 *.pyc
@@ -14,22 +16,44 @@ test_*.py
 *.env
 .DS_store
 =======
+>>>>>>> develop
 # 캐시파일
 __pycache__/
 *pyc
 
 # cookies
+<<<<<<< HEAD
+
+*/cookies
+
+=======
 */cookies
 
 # local logs
 spark-events/
 
+>>>>>>> develop
 # 가상환경
 /venv
 
 # 이미지
 *.png
 
+<<<<<<< HEAD
+# 시각화
+*.ipynb
+
+# sample data
+data/
+
+# 배포용 zip 이미지
+*.zip
+
+.DS_Store
+
+# 로그 제거
+spark-events/
+=======
 # data
 data
 *csv
@@ -43,3 +67,4 @@ data
 .DS_STORE
 *.zip
 >>>>>>> 1e0be39 (chore: .gitignore 수정)
+>>>>>>> develop
