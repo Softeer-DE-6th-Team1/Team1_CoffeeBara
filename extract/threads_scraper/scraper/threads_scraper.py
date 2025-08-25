@@ -180,7 +180,7 @@ def _scroll_once(page) -> int:
 def _infinite_scroll_collect_recent(
     page,
     keyword: str,
-    within_minutes: int = 10,
+    within_minutes: int = 30,
     patience_rounds: int = 3,
     max_no_growth_rounds: int = 3,
     max_scrolls: int = 200,
@@ -281,7 +281,7 @@ def _infinite_scroll_collect_recent(
 
 def scrape_search(
     keyword: str,
-    within_minutes: int = 10,
+    within_minutes: int = 30,
     cookies_override: Optional[List[dict]] = None
 ) -> dict:
     """
