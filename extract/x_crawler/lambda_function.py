@@ -19,12 +19,12 @@ S3_BUCKET = os.getenv('S3_BUCKET', 'softeer-de-6th-team1')
 S3_PREFIX = os.getenv('S3_KEY_PREFIX', 'raw-data')
 COOKIES_KEY = os.getenv("COOKIES_KEY", "configs/x_cookies.json")
 KEYWORDS_KEY = os.getenv("KEYWORDS_KEY", "configs/keywords.txt") 
-WINDOW_MINUTES = int(os.getenv("WINDOW_MINUTES", "10"))
+WINDOW_MINUTES = int(os.getenv("WINDOW_MINUTES", "30"))
 TARGET = int(os.getenv("TARGET", "400"))
 CHANNEL = os.getenv('CHANNEL', 'X')
 
 s3 = boto3.client('s3')
-
+dynamodb = boto3.resource('dynamodb')
 
 def _s3_upload(local_path: str, key: str):
     if not S3_BUCKET:
@@ -40,6 +40,48 @@ def _csv_header(path: str):
                 "username","uploaded_time","collected_time","channel","query","text"
             ])
             w.writeheader()
+
+# DynamoDB 카운터 업데이트 및 완료 처리 함수 추가
+def _update_and_finalize_job(job_info: dict, bucket: str, prefix: str):
+    """DynamoDB 카운터를 업데이트하고, 모든 작업 완료 시 _SUCCESS 파일을 생성합니다."""
+    job_id = job_info.get('jobId')
+    total_files = job_info.get('totalFiles')
+    table_name = job_info.get('tableName')
+
+    # job_info가 없으면 DynamoDB 로직을 건너뜁니다 (테스트 등 예외 상황용).
+    if not all([job_id, total_files, table_name]):
+        logging.warning("job_info is missing. Skipping DynamoDB counter update.")
+        return
+
+    table = dynamodb.Table(table_name)
+    try:
+        # 카운터 원자적으로 1 증가
+        response = table.update_item(
+            Key={'jobId': job_id},
+            UpdateExpression="SET completedFiles = completedFiles + :val",
+            ExpressionAttributeValues={':val': 1},
+            ReturnValues="UPDATED_NEW"
+        )
+        
+        new_count = response.get('Attributes', {}).get('completedFiles')
+        logging.info(f"Incremented counter for job {job_id}. Status: {new_count}/{total_files}")
+
+        # 마지막 작업자인 경우 _SUCCESS 파일 생성
+        if new_count is not None and new_count >= total_files:
+            logging.info(f"This is the final job for {job_id}. Creating _SUCCESS file.")
+            success_key = f"{prefix}/_SUCCESS"
+            s3.put_object(Bucket=bucket, Key=success_key, Body=b'')
+            logging.info(f"Created _SUCCESS file at s3://{bucket}/{success_key}")
+            
+            # (선택) 작업 상태를 'COMPLETED'로 업데이트
+            table.update_item(
+                Key={'jobId': job_id},
+                UpdateExpression="SET #s = :status",
+                ExpressionAttributeNames={'#s': 'status'},
+                ExpressionAttributeValues={':status': 'COMPLETED'}
+            )
+    except Exception as e:
+        logging.error(f"Failed to update DynamoDB counter for job {job_id}: {e}")
 
 
 def _parse_created_at(created):
@@ -300,8 +342,9 @@ async def run(event, context=None):
     window_start = now_utc - timedelta(minutes=WINDOW_MINUTES)
     collected_iso = now_utc.isoformat(timespec="seconds")
 
-    ts_for_filename = now_utc.strftime("%Y%m%dT%H%M%SZ")
-    local_csv = f"/tmp/x_data_{ts_for_filename}.csv"
+    scraper_id = event.get("scraper_id", "x") 
+    ts_for_filename = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    local_csv = f"/tmp/scraper_{scraper_id}_{ts_for_filename}.csv"
     _csv_header(local_csv)
     logging.info(f"Created a single CSV file for all keywords: {local_csv}")
 
@@ -326,20 +369,24 @@ async def run(event, context=None):
         await asyncio.sleep(2)  # rate limit 완화
 
     prefix = event.get("prefix", S3_PREFIX)
-
     s3_key = ""
-    if os.path.exists(local_csv):
+
+    # 데이터가 있는 경우에만 업로드하도록 수정
+    if os.path.exists(local_csv) and os.path.getsize(local_csv) > 65:
         try:
-            key = f"{prefix}/x-data.csv"
+            key = f"{prefix}/scraper_{scraper_id}.csv"
             _s3_upload(local_csv, key)
             s3_key = f"s3://{S3_BUCKET}/{key}"
         finally:
-            # ADDED: 로컬 파일 정리
             try:
                 os.remove(local_csv)
                 logging.info(f"Removed local file: {local_csv}")
             except Exception as e:
                 logging.error(f"Failed to remove local file {local_csv}: {e}")
+
+    # 모든 작업이 끝난 후, 최종적으로 DynamoDB 카운터 업데이트
+    job_info = event.get("job_info", {})
+    _update_and_finalize_job(job_info, S3_BUCKET, prefix)
 
     # (선택) httpx 커넥션 정리
     try:
