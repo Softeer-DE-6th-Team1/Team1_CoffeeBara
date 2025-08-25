@@ -36,4 +36,10 @@ data
 
 # 시각화
 *.ipynb
+<<<<<<< HEAD
 >>>>>>> 56cbd60 (chore: .gitignore 파일 추가)
+=======
+
+.DS_STORE
+*.zip
+>>>>>>> 1e0be39 (chore: .gitignore 수정)
