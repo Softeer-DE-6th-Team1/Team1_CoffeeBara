@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 캐시 파일
 __pycache__/
 *.pyc
@@ -12,3 +13,33 @@ test_*.py
 *.log
 *.env
 .DS_store
+=======
+# 캐시파일
+__pycache__/
+*pyc
+
+# cookies
+*/cookies
+
+# local logs
+spark-events/
+
+# 가상환경
+/venv
+
+# 이미지
+*.png
+
+# data
+data
+*csv
+
+# 시각화
+*.ipynb
+<<<<<<< HEAD
+>>>>>>> 56cbd60 (chore: .gitignore 파일 추가)
+=======
+
+.DS_STORE
+*.zip
+>>>>>>> 1e0be39 (chore: .gitignore 수정)
