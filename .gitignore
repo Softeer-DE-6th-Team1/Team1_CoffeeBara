@@ -14,3 +14,9 @@ __pycache__/
 
 # 시각화
 *.ipynb
+
+# sample data
+data/
+
+# 배포용 zip 이미지
+*.zip
