@@ -10,7 +10,7 @@ RUN dnf update -y && \
 
 # Spark 3.5.1 설치
 WORKDIR /opt
-RUN curl --fSL -o spark.tgz https://archive.apache.org/dist/spark/spark-3.5.1/spark-3.5.1-bin-hadoop3.tgz && \
+RUN curl -fSL -o spark.tgz https://archive.apache.org/dist/spark/spark-3.5.1/spark-3.5.1-bin-hadoop3.tgz && \
     tar -xzf spark.tgz && \
     mv spark-3.5.1-bin-hadoop3 spark && \
     rm spark.tgz
@@ -23,12 +23,16 @@ ENV SPARK_HOME=/opt/spark
 ENV PATH=$SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH
 
 # S3A connector (Hadoop AWS + AWS SDK)
-RUN curl -L -o $SPARK_HOME/jars/hadoop-aws-3.3.4.jar \
+RUN curl -fSL -o $SPARK_HOME/jars/hadoop-aws-3.3.4.jar \
       https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar && \
-    curl -L -o $SPARK_HOME/jars/aws-java-sdk-bundle-1.12.262.jar \
-      https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.767.jar && \
+    curl -fSL -o $SPARK_HOME/jars/aws-java-sdk-bundle-1.12.262.jar \
+      https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar && \
     curl -fSL -o /opt/spark/jars/spark-hadoop-cloud_2.12-3.5.1.jar \
       https://repo1.maven.org/maven2/org/apache/spark/spark-hadoop-cloud_2.12/3.5.1/spark-hadoop-cloud_2.12-3.5.1.jar 
+
+# PostgreSQL driver
+RUN curl -fSL -o $SPARK_HOME/jars/postgresql-42.7.4.jar \
+    https://jdbc.postgresql.org/download/postgresql-42.7.4.jar
 
 # spark conf
 COPY conf/workers ${SPARK_HOME}/conf/workers
