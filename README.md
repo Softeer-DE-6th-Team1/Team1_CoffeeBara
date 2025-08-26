@@ -1,16 +1,11 @@
 # Team1_CoffeeBara
 Softeer bootcamp 6기 DE 1팀 개발 레포지토리입니다.
-
 ## 주제
 자동차 제조/판매/운용 또는 교통/모빌리티와 관련된 분야에서, 상업적으로 사용에 문제가 없는 공개된 데이터와 온라인 상에 공개된 소비자들의 반응 데이터를 직접 수집/가공/활용해서 상업적 가치를 만들어 내는 Data Product
-
 ## 문제 정의
 현대자동차그룹의 PR팀의 SNS 모니터링 담당자는 회사가 사전에 정의한 차량 관련 리스크에 대해 다양한 채널에서 모니터링을 진행합니다. 하지만 SNS는 동시다발적으로 데이터가 생성되기 때문에 발생 가능한 모든 리스크를 일일이 모니터링하기에는 한계가 존재합니다.
-
 ## 해결 방법 (데이터 프로젝트 제안)
 따라서 어느 정도 확산 가능성이 있는 리스크만 선별적으로 알려주는 데이터 프로덕트를 제안합니다. 현대자동차그룹 차량과 관련된 SNS 데이터를 수집하여 리스크 여부와 관련있는 데이터를 골라냅니다. 이후, 키워드를 추출하고, 사전에 정의해둔 리스크 유형별 분류를 통해 특정 리스크나 키워드의 언급량이 평소보다 많이 증가할 때 모니터링을 권고하는 slack 알림을 보냅니다. 그리고 대시보드를 통해 해당 리스크를 모니터링 하기 위한 다양한 지표를 시각적으로 제공합니다.
-
-
 ## 데이터 파이프라인
 ### 1. Extract
 - X-scraper, Threads-scraper
@@ -29,41 +24,32 @@ Softeer bootcamp 6기 DE 1팀 개발 레포지토리입니다.
     - SNS에서 30분 주기로 수집되는 raw data를 적재하는 데이터 레이크 역할을 합니다. 적재된 파일은 S3 Event Notification을 통해 EC2에서 Spark Job을 실행하는 람다를 트리거하고, Spark Job이 처리해야할 데이터 소스로 사용됩니다.
 - DynamoDB
     - 빠른 읽기/쓰기가 필요한 데이터를 목적에 따라 분리하여 효율적으로 적재합니다.
-    - Category Count DB: Spark가 30분 주기로 집계한 리스크 유형별 통계 데이터를 적재합니다. 이 데이터는 다음 배치에서 리스크 점수 계산을 위한 과거 데이터로 다시 사용됩니다.
     - Alert DB: Spark 분석 결과, 특정 임계치를 초과한 경고 데이터만을 최종적으로 선별하여 적재합니다. 이 테이블에 데이터가 적재되면, DynamoDB Streams를 통해 Slack 알림을 보내는 람다를 트리거합니다.
 - RDS
-    - Spark가 처리한 모든 통계 및 리스크 지표 데이터를 구조화하여 최종적으로 적재하는 데이터 웨어하우스 역할을 합니다.
-    - 적재된 데이터는 Tableau 대시보드를 통해 시각화됩니다.
-
+    - Spark window가 처리한 모든 통계 및 리스크 지표 데이터를 구조화하여 최종적으로 적재하는 데이터 웨어하우스 역할을 합니다.
+    - 적재된 데이터는 대시보드를 통해 시각화됩니다.
 ### 4. Alert
 - Spark 분석 결과, 리스크 점수가 임계치를 초과한 데이터가 Alert DynamoDB에 적재되면, 이벤트를 감지한 Lambda 함수가 즉시 Slack 채널으로 알림을 보냅니다. 이를 통해 담당자는 SNS 상에서 확산될 위험성이 있는 특정 리스크를 집중적으로 모니터링 할 수 있습니다.
-
+- 만약 데이터 수집 및 처리 과정에서 장애가 발생하면 이에 대해 개발자 Slack 채널로 알림을 보냅니다. 이를 통해 개발자는 장애에 빠르게 대응할 수 있습니다.
 ### 5. Dashboard
-SNS 담당자는 알림에 보내진 dashboard 링크를 통해 해당 리스크에 대한 시간대별 지표를 시각적으로 확인할 수 있습니다.
-
-
+SNS 담당자는 알림에 보내진 dashboard 링크를 통해 해당 리스크에 대한 시간대별 지표를 대시보드를 통해 시각적으로 확인할 수 있습니다.
 ## 아키텍처 시각화
 ![프로젝트 아키텍처](./images/softeer-6th-de-team1-architecture.png)
-
-
 ## 커피바라 팀원 소개
-
 > 커피와 카피바라를 좋아하는 DE 1팀입니다!
-
 <br/>
-
 <div align="center">
 <table>
 <th>팀원</th>
     <th><a href="https://github.com/nohhha">노하연</a></th>
-	<th><a href="https://github.com/ManRaccoon">박도현</a></th>
+    <th><a href="https://github.com/ManRaccoon">박도현</a></th>
     <th><a href="https://github.com/mariahwy">유혜원</a></th>
     <tr>
     <td>  </td>
-    	<td>
+        <td>
         <img width="160" height="160" alt="노하연" src="https://github.com/user-attachments/assets/5882e407-2c85-4d22-9e36-16eb89b940fa" />
       </td>
-    	<td>
+        <td>
         <img width="160" height="160" alt="박도현" src="https://github.com/user-attachments/assets/d92155e2-7976-4cf0-b0c9-3e833aa94b9d" />
      </td>
       <td>
@@ -71,34 +57,29 @@ SNS 담당자는 알림에 보내진 dashboard 링크를 통해 해당 리스크
       </td>
     </tr>
     <tr>
-	<td> 역할 </td>
-	<td>
-		<p align="center">DE</p>
-	</td>
-	<td>
-		<p align="center">DE</p>
-	</td>
-	<td>
-		<p align="center">DE</p>
-	</td>
+    <td> 역할 </td>
+    <td>
+        <p align="center">DE</p>
+    </td>
+    <td>
+        <p align="center">DE</p>
+    </td>
+    <td>
+        <p align="center">DE</p>
+    </td>
     </tr>
   </table>
 </div>
 <br />
 <br />
-
-
 ### 협업 툴 사용법
-
 | Tool | 사용 목적 |
 |------|-----------|
-| 🧠 **Notion** | 회의록, 기획안, 데일리 스크럼 문서화 |
-| 💬 **Slack** | 실시간 커뮤니케이션 & 일정 조율 |
-| 🐙 **GitHub** | 코드 관리 + PR & 리뷰 관리 |
-
+| :뇌: **Notion** | 회의록, 기획안, 데일리 스크럼 문서화 |
+| :말풍선: **Slack** | 실시간 커뮤니케이션 & 일정 조율 |
+| :문어: **GitHub** | 코드 관리 + PR & 리뷰 관리 |
 ---
-
-## 🛠️ 기술 스택
+## :망치와_렌치: 기술 스택
 <div align="left">
   <!-- Cloud & Infrastructure -->
   <img src="https://img.shields.io/badge/AWS%20EC2-FF9900?style=for-the-badge&logo=amazonec2&logoColor=white"/>
@@ -116,8 +97,7 @@ SNS 담당자는 알림에 보내진 dashboard 링크를 통해 해당 리스크
   <!-- Language -->
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
 </div>
-
-## 🗂️ 폴더구조
+## :카드_인덱스_칸막이: 폴더구조
 ```md
 /Team1_CoffeeBara
 ├── Extract
@@ -133,11 +113,10 @@ SNS 담당자는 알림에 보내진 dashboard 링크를 통해 해당 리스크
 │   └── README.md
 ├── Alert
 │   ├── slack_lambda_function.py
-│   └── README.md	
+│   └── README.md
 ├── Dashboard
 │   ├── app.py
 │   └── README.md
 ├── images/
 └── README.md
-
 ```

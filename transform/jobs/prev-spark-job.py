@@ -5,7 +5,6 @@ from pyspark.ml.feature import StopWordsRemover, RegexTokenizer
 from pyspark.sql.functions import (
     col, expr, explode, array_intersect, array,
     lit, size, lower, trim, broadcast, regexp_replace,
-    lag, avg, when, stddev, sum, col
 )
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -203,37 +202,193 @@ def save_to_category_ddb(df_cat, table_name: str, region="ap-northeast-2"):
         table.put_item(Item=item)
 
 
-def calculate_metrics(df_cat, weights):
+def get_prev_item(table, pk, prev_time):
     """
-     Spark 윈도우 함수로 지표 계산
+    이전 시점의 데이터를 dynamodb로부터 가져오기
     """
-    w = Window.partitionBy("channel", "query", "category").orderBy("collected_time")
+    try:
+        response = table.get_item(
+            Key={
+                "pk": pk,
+                "sk": prev_time
+            }
+        )
+        return response.get("Item")
+    except Exception as e:
+        print(f"[WARN] DynamoDB get_item error: {e}")
+        return None
 
-    df_with_prev = (
-        df_cat
-        .withColumn("prev_count", lag("count_category", 1).over(w))
-        .withColumn("short_term_growth",
-                    (col("count_category") - col("prev_count")) /
-                    when(F.col("prev_count") > 0, col("prev_count")).otherwise(1))
-        .withColumn("long_term_ratio",
-                    col("count_category") / avg("count_category").over(w.rowsBetween(-3, -1)))
-        .withColumn("volatility",
-                    stddev("count_category").over(w.rowsBetween(-6, -1)) /
-                    avg("count_category").over(w.rowsBetween(-6, -1)))
-        .withColumn("ratio_to_total",
-                    col("count_category") /
-                    sum("count_category").over(Window.partitionBy("channel", "query", "collected_time")))
-        .withColumn("acceleration",
-                    col("short_term_growth") - lag("short_term_growth", 1).over(w))
-        .withColumn("score",
-            weights[0]*col("short_term_growth") +
-            weights[1]*col("long_term_ratio") +
-            weights[2]*col("ratio_to_total") +
-            weights[3]*col("volatility") +
-            weights[4]*col("acceleration"))
-    )
 
-    return df_with_prev
+def calc_short_term_growth(cur_count, prev_count):
+    """
+    30분 단위 단기 증가율
+    """
+    if prev_count is None or prev_count <= 0:
+        prev_count = 1
+    if cur_count is None:
+        cur_count = 0
+    return (cur_count - prev_count) / prev_count
+
+
+def calc_long_term_ratio(cur_count, history):
+    """
+    최근 3회(1시간반) 평균 대비 현재 30분 count 비율
+    """
+    vals = [int(x) for x in history if x is not None and x > 0]
+    if not vals:
+        return 0.0
+    moving_avg = sum(vals) / len(vals)
+    if moving_avg <= 0:
+        return 0.0
+    cur_count = 0 if cur_count is None else cur_count
+    return cur_count / moving_avg
+
+
+def calc_volatility(history):
+    """
+    최근 6회(3시간) stddev/mean
+    """
+    vals = [int(x) for x in history if x is not None and x >= 0]
+    if len(vals) < 2:
+        return 0.0
+    mu = sum(vals) / len(vals)
+    if mu <= 0:
+        return 0.0
+    sigma = (sum([(x - mu) ** 2 for x in vals]) / (len(vals) - 1)) ** 0.5
+    return sigma / mu
+
+
+def calc_duration_above_threshold(history_growth, threshold=2.0):
+    """
+    최근 3회 growth가 threshold 초과했는지
+    """
+    vals = [g for g in history_growth if g is not None]
+    if len(vals) < 3:
+        return 0
+    return 1 if all(g > threshold for g in vals[-3:]) else 0
+
+
+def calc_ratio_to_total(cur_count, total_count):
+    """
+    전체 대비 점유율
+    """
+    if cur_count is None:
+        cur_count = 0
+    if total_count is None or total_count <= 0:
+        return 0.0
+    return cur_count / total_count
+
+
+def calc_acceleration(growth, prev_growth):
+    """
+    성장 속도 변화량
+    """
+    if growth is None:
+        growth = 0.0
+    if prev_growth is None:
+        return 0.0
+    return growth - prev_growth
+
+
+def calculate_score(cur_count: int, prev_count: int, growth: float) -> float:
+    """
+    최종 score 계산 (현재는 growth 그대로 사용)
+    향후 다른 지표를 조합 가능
+    """
+    return growth
+
+
+def calculate_metrics(spark, df_count, table_name, weights, region="ap-northeast-2"):
+    """
+    현재 DataFrame과 DynamoDB에 있는 직전 시점 데이터를 비교해서
+    단기증가율, 장기추세, 변동성, 연속성, 지속시간, 점유율, 가속도, 최종 score 등을 계산
+    """
+    dynamodb = boto3.resource("dynamodb", region_name=region)
+    table = dynamodb.Table(table_name)
+
+    rows = df_count.collect()
+    result_rows = []
+
+    for row in rows:
+        pk = f"{row['channel']}#{row['query']}#{row['category']}"
+        cur_time = datetime.fromisoformat(row['collected_time'].replace("Z", "+00:00"))
+
+        # 현재 count
+        cur_count = row['count_category'] if row['count_category'] is not None else 0
+
+        # 직전 시점 (30분 전)
+        prev_time = (cur_time - timedelta(minutes=30)).isoformat().replace("+00:00", "Z")
+        prev_item = get_prev_item(table, pk, prev_time)
+        prev_count = int(prev_item['count_category']) if prev_item and prev_item.get("count_category") else 1
+
+        # 직전 growth (가속도 계산용)
+        prev_growth = None
+        prev_prev_time = (cur_time - timedelta(minutes=60)).isoformat().replace("+00:00", "Z")
+        prev_prev_item = get_prev_item(table, pk, prev_prev_time)
+        if prev_prev_item and prev_prev_item.get("count_category") is not None:
+            count_pp = int(prev_prev_item['count_category'])
+            prev_growth = calc_short_term_growth(prev_count, count_pp)
+
+        # 최근 history (6회=3시간)
+        hist_counts = []
+        for i in range(1, 7):
+            past_time = (cur_time - timedelta(minutes=30 * i)).isoformat().replace("+00:00", "Z")
+            past_item = get_prev_item(table, pk, past_time)
+            hist_counts.append(int(past_item['count_category']) if past_item and past_item.get("count_category") else None)
+
+        # history로부터 growth 시계열
+        hist_growth = []
+        for i in range(1, len(hist_counts)):
+            if hist_counts[i] is not None and hist_counts[i-1] is not None:
+                hist_growth.append(calc_short_term_growth(hist_counts[i], hist_counts[i-1]))
+            else:
+                hist_growth.append(None)
+
+        # ---- 지표 계산 ----
+        short_term_growth = calc_short_term_growth(cur_count, prev_count)
+        long_term_ratio   = calc_long_term_ratio(cur_count, hist_counts[:3])   # 최근 3회
+        volatility        = calc_volatility(hist_counts)
+        duration          = calc_duration_above_threshold(hist_growth, threshold=2.0)
+
+        # 전체 대비 점유율
+        total_count = df_count.filter(
+            (col("collected_time") == row['collected_time']) &
+            (col("channel") == row['channel']) &
+            (col("query") == row['query'])
+        ).agg({"count_category":"sum"}).collect()[0][0]
+        ratio_to_total = calc_ratio_to_total(cur_count, total_count)
+
+        # 가속도
+        acceleration = calc_acceleration(short_term_growth, prev_growth)
+
+        # 최종 score
+        score = (
+            weights[0] * short_term_growth +
+            weights[1] * long_term_ratio +
+            weights[2] * ratio_to_total +
+            weights[3] * volatility +
+            weights[4] * acceleration
+        )
+
+        result_rows.append(Row(
+            pk=pk,
+            channel=row["channel"],
+            query=row["query"],
+            category=row["category"],
+            cur_time=row['collected_time'],
+            prev_time=prev_time,
+            cur_count=cur_count,
+            prev_count=prev_count,
+            short_term_growth=short_term_growth,
+            long_term_ratio=long_term_ratio,
+            volatility=volatility,
+            duration=duration,
+            ratio_to_total=ratio_to_total,
+            acceleration=acceleration,
+            score=score
+        ))
+
+    return spark.createDataFrame(result_rows)
 
 
 def save_to_rds(df_metrics, db_name):
@@ -266,21 +421,44 @@ def save_to_rds(df_metrics, db_name):
 
 
 def extract_alert(df_metrics, df_count, threshold):
-    df_risk = df_metrics.filter(col("score") > threshold)
+    """
+    score가 threshold 이상인 category에 대해 keyword join 결과 반환
+    """
+    # score가 threshold를 넘는 category 필터
+    # df_risk = df_metrics.filter((col("score") > threshold) & (col("duration") == 1)).select(
+    df_risk = df_metrics.filter((col("score") > threshold)).select(
+        "pk",
+        "channel",
+        "query",
+        "category",
+        "cur_time",
+        "prev_time",
+        "cur_count",
+        "prev_count",
+        "short_term_growth",
+        "long_term_ratio",
+        "volatility",
+        "duration",
+        "ratio_to_total",
+        "acceleration",
+        "score"
+    )
 
+    # df_count (count_category)와 join하여 keyword 단위 연결
     df_alert = (
         df_risk.alias("r")
         .join(
             df_count.alias("c"),
             (
-                (col("r.collected_time") == col("c.collected_time")) &
                 (col("r.channel") == col("c.channel")) &
                 (col("r.query") == col("c.query")) &
-                (col("r.category") == col("c.category"))
+                (col("r.category") == col("c.category")) &
+                (col("r.cur_time") == col("c.collected_time"))
             ),
             how="inner"
         )
         .select(
+            col("r.pk"),
             col("r.channel"),
             col("r.query"),
             col("r.category"),
@@ -293,11 +471,11 @@ def extract_alert(df_metrics, df_count, threshold):
             col("r.short_term_growth"),
             col("r.long_term_ratio"),
             col("r.ratio_to_total"),
-            col("r.acceleration"),
             col("r.score")
         )
         .orderBy(col("r.score").desc(), col("c.count_keyword").desc())
     )
+
     return df_alert
 
 
@@ -351,7 +529,7 @@ if __name__ == "__main__":
     # _S3_RAW_PATH="out/20250801T000000Z.csv" # local test
     _S3_WORDBAG_PATH="configs/wordbag.csv"
     _S3_MAPPED_PATH="mapped"
-    # _DDB_COUNT_TABLE = "softeer-count"
+    _DDB_COUNT_TABLE = "softeer-count"
     _DDB_ALERT_TABLE = "softeer-alert"
     _RDS_NAME = "postgres"
 
@@ -390,24 +568,24 @@ if __name__ == "__main__":
     logger.info("4. 카테고리/키워드 집계")
     df_cat, df_cat_kw = count_category_and_keywords(df_mapped)
 
-    # # category별 집계 결과를 ddb_count에 저장
-    # logger.info("5. DynamoDB(count) 저장")
-    # save_to_category_ddb(df_cat, _DDB_COUNT_TABLE)
+    # category별 집계 결과를 ddb_count에 저장
+    logger.info("5. DynamoDB(count) 저장")
+    save_to_category_ddb(df_cat, _DDB_COUNT_TABLE)
 
     # 순간증가율, 이동평균, 최종 score 계산
-    logger.info("5. 지표 계산")
-    df_metrics = calculate_metrics(df_cat, _WEIGHTS)
+    logger.info("6. 지표 계산")
+    df_metrics = calculate_metrics(spark, df_cat, _DDB_COUNT_TABLE, _WEIGHTS)
 
     # rds에 지표 계산 결과 저장 -> 추후 대시보드에 연결
-    logger.info("6. RDS 저장")
+    logger.info("7. RDS 저장")
     save_to_rds(df_metrics, _RDS_NAME)
 
     # risk score이 특정 threshold 이상인 category 추출
-    logger.info("7. Alert 추출")
+    logger.info("8. Alert 추출")
     df_alert = extract_alert(df_metrics, df_cat_kw, threshold=threshold)
 
     # 필터링 결과를 ddb_alert에 저장
-    logger.info("8. DynamoDB(alert) 저장")
+    logger.info("9. DynamoDB(alert) 저장")
     save_to_alert_ddb(df_alert, _DDB_ALERT_TABLE)
 
     logger.info("=== Spark Job 완료 ===")

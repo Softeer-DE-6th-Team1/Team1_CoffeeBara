@@ -75,11 +75,10 @@ EC2 환경에서 Spark job 실행과 배포를 용이하게 하기 위해 Docker
 - GroupBy 집계
     - (수집시각, 채널, 검색 쿼리, 리스크 유형) 단위로 집계한 데이터프레임 반환
     - (수집시각, 채널, 검색 쿼리, 리스크 유형, 키워드) 단위로 집계한 데이터프레임 반환
-- 첫 번째 데이터프레임을 이후 지표 계산 단계에서 조회하여 사용하기 위해 Category Count DynamoDB에 적재
 
 ### 5. 지표 계산 → RDS
 
-집계 결과를 바탕으로 다양한 모니터링 지표 계산 후 RDS(PostgreSQL) 에 저장.
+Spark window를 사용하여 집계하고, 그 결과를 바탕으로 다양한 모니터링 지표 계산 후 RDS(PostgreSQL) 에 저장.
 
 - 단기 급등 (30분 단위)
 - 장기 추세지표
@@ -100,19 +99,30 @@ EC2 환경에서 Spark job 실행과 배포를 용이하게 하기 위해 Docker
     
     `growth_t - growth_(t-1)`
     
-- 추후 대시보드에 활용하기 위하여 RDS에 적재
+- 추후 시계열 분석 및 대시보드에 활용하기 위하여 RDS에 적재
 
 ```sql
-CREATE TABLE risk_metrics (
-  collected_time TIMESTAMP,
-  category TEXT,
-  channel TEXT,
-  query TEXT,
-  growth DOUBLE,
-  volatility DOUBLE,
-  ratio_to_total DOUBLE,
-  risk_score DOUBLE
+CREATE TABLE metrics (
+    id SERIAL PRIMARY KEY,
+    channel TEXT NOT NULL,
+    query TEXT NOT NULL,
+    category TEXT NOT NULL,
+    cur_time TIMESTAMP NOT NULL,
+    prev_time TIMESTAMP,
+    cur_count INT,
+    prev_count INT,
+    short_term_growth DOUBLE PRECISION,
+    long_term_ratio DOUBLE PRECISION,
+    volatility DOUBLE PRECISION,
+    ratio_to_total DOUBLE PRECISION,
+    acceleration DOUBLE PRECISION,
+    score DOUBLE PRECISION,
+    created_at TIMESTAMP DEFAULT now()
 );
+
+-- 조회 속도를 위해 인덱스 추가
+CREATE INDEX idx_metrics_time
+    ON metrics (channel, query, category, cur_time);
 ```
 
 ### 6. Alert
