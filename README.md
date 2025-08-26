@@ -35,6 +35,7 @@ Softeer bootcamp 6기 DE 1팀 개발 레포지토리입니다.
 SNS 담당자는 알림에 보내진 dashboard 링크를 통해 해당 리스크에 대한 시간대별 지표를 대시보드를 통해 시각적으로 확인할 수 있습니다.
 ## 아키텍처 시각화
 ![프로젝트 아키텍처](./images/softeer-6th-de-team1-architecture.png)
+
 ## 커피바라 팀원 소개
 > 커피와 카피바라를 좋아하는 DE 1팀입니다!
 <br/>
@@ -72,14 +73,15 @@ SNS 담당자는 알림에 보내진 dashboard 링크를 통해 해당 리스크
 </div>
 <br />
 <br />
+
 ### 협업 툴 사용법
 | Tool | 사용 목적 |
 |------|-----------|
-| :뇌: **Notion** | 회의록, 기획안, 데일리 스크럼 문서화 |
-| :말풍선: **Slack** | 실시간 커뮤니케이션 & 일정 조율 |
-| :문어: **GitHub** | 코드 관리 + PR & 리뷰 관리 |
+| **Notion** | 회의록, 기획안, 데일리 스크럼 문서화 |
+| **Slack** | 실시간 커뮤니케이션 & 일정 조율 |
+| **GitHub** | 코드 관리 + PR & 리뷰 관리 |
 ---
-## :망치와_렌치: 기술 스택
+## 기술 스택
 <div align="left">
   <!-- Cloud & Infrastructure -->
   <img src="https://img.shields.io/badge/AWS%20EC2-FF9900?style=for-the-badge&logo=amazonec2&logoColor=white"/>
@@ -97,7 +99,8 @@ SNS 담당자는 알림에 보내진 dashboard 링크를 통해 해당 리스크
   <!-- Language -->
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
 </div>
-## :카드_인덱스_칸막이: 폴더구조
+
+## 폴더구조
 ```md
 /Team1_CoffeeBara
 ├── Extract
